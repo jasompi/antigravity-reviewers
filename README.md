@@ -95,13 +95,16 @@ The plugin runs agy headless (`agy -p`), so agy can't ask you to approve a tool.
 
 ### 3. Install the plugin
 
-From a marketplace that lists it:
+This repo is its own plugin marketplace. In Claude Code:
 
 ```
-/plugin install antigravity-reviewers
+/plugin marketplace add jasompi/antigravity-reviewers
+/plugin install antigravity-reviewers@antigravity-reviewers
 ```
 
-Or load it locally:
+Then restart Claude Code (or run `/reload-plugins`). Later, `/plugin marketplace update antigravity-reviewers` pulls new versions.
+
+Or load it from a local clone for one session:
 
 ```bash
 claude --plugin-dir /path/to/antigravity-reviewers

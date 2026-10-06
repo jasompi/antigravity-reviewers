@@ -1,0 +1,16 @@
+{
+  "$schema": "https://code.claude.com/schemas/marketplace.json",
+  "name": "antigravity-reviewers",
+  "description": "Jasom Pi's Claude Code plugins: second-opinion reviews from Google's Antigravity CLI (agy).",
+  "owner": {
+    "name": "Jasom Pi",
+    "email": "jasom.pi@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "antigravity-reviewers",
+      "source": "./",
+      "description": "Independent second-opinion reviews from Google's Antigravity CLI (agy): code, security, architecture, API/UX design and tests."
+    }
+  ]
+}
