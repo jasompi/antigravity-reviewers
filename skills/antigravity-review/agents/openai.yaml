@@ -1,0 +1,4 @@
+interface:
+  display_name: "Antigravity Code Review"
+  short_description: "Get agy's second opinion on code, security, architecture, design or tests"
+  default_prompt: "Use $antigravity-review to have agy review my uncommitted changes, then triage the findings and ask me what to fix."

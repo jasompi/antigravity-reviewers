@@ -10,7 +10,7 @@
     {
       "name": "antigravity-reviewers",
       "source": "./",
-      "description": "Independent second-opinion reviews from Google's Antigravity CLI (agy): code, security, architecture, API/UX design and tests."
+      "description": "Independent second-opinion reviews from Google's Antigravity CLI (agy) with Gemini, Claude or GPT-OSS models: code, security, architecture, API/UX design and tests, plus documents such as resumes, plans, reports and decks."
     }
   ]
 }

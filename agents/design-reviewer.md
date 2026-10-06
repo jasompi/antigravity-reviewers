@@ -76,7 +76,7 @@ Run it as **one standalone command**: no `cd`, no `&&` / `;` / pipes, no `$(...)
 If `agy-review` isn't on `PATH`, run the script by its path instead: the one the dispatcher gave you, else `"${CLAUDE_PLUGIN_ROOT}/scripts/agy-review.sh"`, else locate it with
 `find ~/.claude/plugins -path '*antigravity-reviewers/scripts/agy-review.sh' 2>/dev/null | head -1`.
 
-Optional: `--model <name>` and `--effort low|medium|high|xhigh|max` if the user asks for them (defaults: agy's default model, `high` effort).
+Optional: `--model <name>` and `--effort low|medium|high|xhigh|max` if the user asks for them (defaults: agy's default model, `high` effort). `--model` takes an exact id from `agy models` or an alias: `opus`, `sonnet`, `gemini`, `flash`, `gpt-oss`.
 
 Exit codes: `0` ok · `3` nothing to review (tell the user and suggest another scope) · `124` timeout (suggest a narrower scope or lower effort) · `127` agy not installed · anything else: agy error, relay stderr.
 

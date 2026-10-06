@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Stand-in for the agy CLI used by run-tests.sh.
+#   agy models            prints a canned model list (tab-separated, like agy)
+#   agy ... -p PROMPT     logs args to $MOCK_AGY_LOG, the prompt to $MOCK_AGY_PROMPT,
+#                         prints a canned review, or fails with $MOCK_AGY_EXIT/$MOCK_AGY_STDERR
+if [[ "${1:-}" == models ]]; then
+  [[ -n "${MOCK_AGY_MODELS_FAIL:-}" ]] && exit 1
+  echo "Fetching available models..."
+  printf '%s\t%s\n' \
+    gemini-3.8-flash-high "Gemini 3.8 Flash (High)" gemini-3.8-flash-low "Gemini 3.8 Flash (Low)" \
+    gemini-3.7-flash-medium "Gemini 3.7 Flash (Medium)" \
+    gemini-3.1-pro-high "Gemini 3.1 Pro (High)" gemini-3.1-pro-low "Gemini 3.1 Pro (Low)" \
+    claude-opus-5-5-low "Claude Opus 5.5 (Low)" claude-opus-5-5-medium "Claude Opus 5.5 (Medium)" \
+    claude-opus-5-5-high "Claude Opus 5.5 (High)" claude-sonnet-5-5-high "Claude Sonnet 5.5 (High)" \
+    gpt-oss-120b-medium "GPT-OSS 120B (Medium)"
+  [[ -n "${MOCK_AGY_COUNT:-}" ]] && echo x >> "$MOCK_AGY_COUNT"
+  exit 0
+fi
+prompt=""
+args=()
+while [[ $# -gt 0 ]]; do
+  if [[ "$1" == -p ]]; then prompt="$2"; shift 2; else args+=("$1"); shift; fi
+done
+# Like agy, reject an --effort that conflicts with the model id's suffix.
+for i in "${!args[@]}"; do
+  [[ "${args[$i]}" == --model ]] && m="${args[$((i + 1))]}"
+  [[ "${args[$i]}" == --effort ]] && e="${args[$((i + 1))]}"
+done
+if [[ "${m:-}" =~ -(low|medium|high)$ && -n "${e:-}" && "${BASH_REMATCH[1]}" != "$e" ]]; then
+  echo "error: invalid model selection (--model \"$m\" --effort \"$e\"): --model $m conflicts with --effort=$e" >&2
+  exit 1
+fi
+[[ -n "${MOCK_AGY_LOG:-}" ]] && printf '%s\n' "${args[@]}" > "$MOCK_AGY_LOG"
+[[ -n "${MOCK_AGY_PROMPT:-}" ]] && printf '%s' "$prompt" > "$MOCK_AGY_PROMPT"
+if [[ -n "${MOCK_AGY_EXIT:-}" ]]; then
+  echo "${MOCK_AGY_STDERR:-mock failure}" >&2
+  exit "$MOCK_AGY_EXIT"
+fi
+printf '## Summary\nMock review.\n\n## Verdict\nREADY - mock.\n'

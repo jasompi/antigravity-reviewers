@@ -1,0 +1,37 @@
+{
+  "name": "antigravity-reviewers",
+  "version": "1.1.0",
+  "description": "Independent second-opinion reviews from Google's Antigravity CLI (agy), using Gemini or any model agy offers (Claude Opus/Sonnet, GPT-OSS). Review code, security, architecture, API/UX design and tests, or documents such as resumes, plans, ideas, reports and presentations together with their context, then triage the feedback and decide together what to change.",
+  "author": {
+    "name": "Jasom Pi",
+    "email": "jasom.pi@gmail.com"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/jasompi/antigravity-reviewers",
+  "keywords": [
+    "antigravity",
+    "agy",
+    "gemini",
+    "code-review",
+    "document-review",
+    "resume",
+    "second-opinion"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Antigravity Reviewers",
+    "shortDescription": "Second-opinion reviews of code and documents from agy",
+    "longDescription": "Ask Google's Antigravity CLI (agy) for an independent review using Gemini, Claude or GPT-OSS models. Covers code, security, architecture, design and tests, plus resumes, plans, ideas, reports and decks with their supporting context. Codex triages the feedback and asks before changing anything.",
+    "developerName": "Jasom Pi",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Ask gemini to review my uncommitted changes",
+      "Ask opus via agy to review this resume against the job description"
+    ]
+  }
+}

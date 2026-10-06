@@ -1,11 +1,11 @@
 ---
 name: antigravity-review
-description: Use when the user wants an outside AI review from Google's Antigravity CLI (agy), including phrases like "using antigravity to review", "ask agy to review", "ask antigravity to review", "ask gemini to review", "have gemini check", "second opinion from gemini/agy", or "gemini security / architecture / design / test review". Picks the review type and dispatches the matching antigravity-reviewers agent. Also covers agy install, sign-in, agy allow-rules and Claude Code sandbox troubleshooting. Load this before dispatching any antigravity-reviewers agent.
+description: Use when the user wants an outside AI review from Google's Antigravity CLI (agy), including phrases like "using antigravity to review", "ask agy to review", "ask antigravity to review", "ask gemini to review", "have gemini check", "second opinion from gemini/agy", or "gemini security / architecture / design / test review", or naming another agy model as the reviewer ("ask opus via agy", "gpt-oss review"). Picks the review type and dispatches the matching antigravity-reviewers agent. For documents (resume, plan, idea, report, deck), use the agy-doc-review skill instead. Also covers agy install, sign-in, agy allow-rules and Claude Code sandbox troubleshooting. Load this before dispatching any antigravity-reviewers agent.
 ---
 
 # Antigravity Review
 
-Gets an independent review from **Google's Antigravity CLI (`agy`)**, a different model from the one that wrote the code. agy runs read-only (`--mode plan --sandbox`). Claude then presents its findings, gives its own triage, and asks the user what to act on.
+Gets an independent review from **Google's Antigravity CLI (`agy`)**, a different model from the one that wrote the code. agy can also run Claude Opus/Sonnet and GPT-OSS as the reviewer. agy runs read-only (`--mode plan --sandbox`). Claude then presents its findings, gives its own triage, and asks the user what to act on.
 
 "gemini", "antigravity" and "agy" all mean this reviewer.
 
@@ -18,6 +18,9 @@ Gets an independent review from **Google's Antigravity CLI (`agy`)**, a differen
 | architecture, structure, "over-engineered?", a design doc | `antigravity-reviewers:architecture-reviewer` |
 | API / CLI / schema / UI design, ergonomics, "is this intuitive?" | `antigravity-reviewers:design-reviewer` |
 | tests, coverage, missing cases, flaky tests | `antigravity-reviewers:test-reviewer` |
+| a **document**: resume, cover letter, plan, idea, proposal, report, analysis, slides | the **`agy-doc-review`** skill, run inline in this conversation (no agent) |
+
+A software design doc or technical proposal still goes to `architecture-reviewer` (with `--context-file`). A business, project or personal plan goes to `agy-doc-review`.
 
 For "full review" or several types, run the agents **one after another**, never in parallel.
 
@@ -27,9 +30,18 @@ For "full review" or several types, run the agents **one after another**, never 
 - In the agent prompt, include the user's request verbatim, the scope (uncommitted, last commit, branch, files, whole repo, or doc), any specific focus, and the script path:
   `${CLAUDE_PLUGIN_ROOT}/scripts/agy-review.sh`
   The agent prefers the `agy-review` command on `PATH` (see setup) and runs it as a single standalone command, so the user's sandbox and permission rules match it.
-- Pass along a model or effort level only if the user asked for one.
+- Pass along a model or effort level only if the user asked for one. `--model` accepts aliases (`opus`, `sonnet`, `gemini`, `flash`, `gpt-oss`) or an exact id from `agy models`.
 
 The agent runs the script, presents agy's findings with Claude's triage, and asks the user what to fix. Relay its final message to the user. Don't re-review the code yourself.
+
+### Clients without subagents (Codex)
+
+If your client can't dispatch the agents above (for example, Codex), run the review yourself, following the same steps the agent files describe:
+
+1. Pick the type and one scope flag: `--uncommitted` (default; fall back to `--last-commit` if the tree is clean), `--staged`, `--last-commit`, `--range A..B`, `--branch [BASE]`, `--files PATH...`, `--repo` (default for architecture), or `--context-file FILE`.
+2. Run `agy-review <type> <scope> [--focus "..."] [--model M]` as one standalone command (no `cd`, `&&`, pipes or redirects), allowing up to 15 minutes. If it fails with a sandbox, bind or network error, retry once with escalated permissions (outside the sandbox). If `agy-review` isn't on `PATH`, use `scripts/agy-review.sh` two directories above this skill's folder.
+3. Present `Antigravity <type> review of <scope>: <Verdict>`, agy's findings by severity (verbatim if under about 150 lines), the `REVIEW_SAVED:` path, and your agree/disagree triage of each Critical and High finding.
+4. Ask what to fix (all Critical / Critical + High / pick / discuss / dismiss), and change nothing until the user chooses.
 
 ## 3. Setup and troubleshooting
 
@@ -37,8 +49,9 @@ A working setup needs all of these. The README has the exact JSON:
 
 1. **agy installed and signed in**: run `agy` once interactively.
 2. **agy allow-rules** in `~/.gemini/antigravity-cli/settings.json` under `permissions.allow`: read-only `command(...)` rules such as `command(git diff)` and `command(grep)`. agy runs headless, so any unapproved tool is auto-denied. Rules must be `tool(target)`; bare names are dropped.
-3. **`agy-review` on PATH**: a symlink to the plugin's `scripts/agy-review.sh`, e.g. in `~/.local/bin`.
-4. **Claude Code settings** (`~/.claude/settings.json` or the project's `.claude/settings.json`): `permissions.allow: ["Bash(agy-review *)"]`, plus `sandbox.excludedCommands: ["agy-review *"]` if sandboxing is on. Excluding `"agy"` doesn't work: the sandbox matches the command Claude runs, not the programs a script starts.
+3. **`agy-review` on PATH**: a symlink to the plugin's `scripts/agy-review.sh`, e.g. in `~/.local/bin`. The plugin's `scripts/install.sh` creates it and prints the settings snippets below.
+4. **Codex**: `agy-review` needs network access, so it must run outside the sandbox. Approve it with "always allow" when Codex asks, or add `prefix_rule(pattern=["agy-review"], decision="allow")` to `~/.codex/rules/default.rules` (see the README's Codex section).
+5. **Claude Code settings** (`~/.claude/settings.json` or the project's `.claude/settings.json`): `permissions.allow: ["Bash(agy-review *)"]`, plus `sandbox.excludedCommands: ["agy-review *"]` if sandboxing is on. Excluding `"agy"` doesn't work: the sandbox matches the command Claude runs, not the programs a script starts.
 
 Don't edit any of these settings for the user without explicit permission.
 
@@ -47,9 +60,11 @@ Don't edit any of these settings for the user without explicit permission.
 | `agy` not found (exit 127) | `curl -fsSL https://antigravity.google/cli/install.sh \| bash`, then run `agy` once interactively to sign in. See https://antigravity.google/download |
 | `headless mode cannot prompt … auto-denied` | agy needed a tool that isn't pre-approved. Add `tool(target)` allow-rules (item 2). Retrying won't help. |
 | `agy-review: command not found` | Create the symlink (item 3), or let the agent use the full script path. |
-| `listen tcp 127.0.0.1:0: bind: operation not permitted` | The Claude Code sandbox is blocking agy. Add `"agy-review *"` to `sandbox.excludedCommands` (item 4) and restart the session. The agent may retry once with the sandbox disabled, which needs the user's approval. |
+| `listen tcp 127.0.0.1:0: bind: operation not permitted` | The Claude Code sandbox is blocking agy. Add `"agy-review *"` to `sandbox.excludedCommands` (item 5) and restart the session. The agent may retry once with the sandbox disabled, which needs the user's approval. |
 | Eligibility / 401 / 403 / sign-in / network errors | Run `agy` interactively to re-authenticate. With sandboxing on, the sandbox may be blocking network access, so use the sandbox fix above. |
 | Timeout (exit 124) | Narrow the scope (specific files, one commit), lower the effort (`--effort medium`), or set `AGY_REVIEW_TIMEOUT=14m`. |
 | Nothing to review (exit 3) | The working tree is clean. Try `--last-commit`, `--branch`, or `--files`. |
+| Cannot convert a document (exit 4) | Install a converter (`pandoc`, `poppler-utils` for `pdftotext`, or `pipx install 'markitdown[all]'`), or review a Markdown export instead. |
+| Unknown model (exit 2 with a model list) | Use an alias (`opus`, `sonnet`, `gemini`, `flash`, `gpt-oss`) or an exact id from `agy models`. |
 
 Environment overrides: `AGY_REVIEW_MODEL`, `AGY_REVIEW_EFFORT` (default `high`), `AGY_REVIEW_TIMEOUT` (default `12m`), `AGY_REVIEW_OUT_DIR` (default `$TMPDIR/agy-reviews`).

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Antigravity Document Review"
+  short_description: "Get agy's second opinion on a resume, plan, report or deck"
+  default_prompt: "Use $agy-doc-review to have agy review this document with its context, then triage the feedback and ask me what to apply."
