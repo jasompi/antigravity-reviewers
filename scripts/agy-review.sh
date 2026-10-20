@@ -46,6 +46,9 @@ usage() { sed -n '2,34p' "$SELF" | sed 's/^# \{0,1\}//'; exit 2; }
 
 abspath() { echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"; }
 
+# Bash 3.2 (macOS /bin/bash) has no ${var,,}.
+lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+
 [[ $# -ge 1 ]] || usage
 TYPE="$1"; shift
 case "$TYPE" in
@@ -190,7 +193,7 @@ pick_model() {
 
 resolve_model() {
   local re="" alias=1 picked
-  case "${MODEL,,}" in
+  case "$(lower "$MODEL")" in
     "") return 0 ;;
     opus|claude|claude-opus)       re='^claude-opus-' ;;
     sonnet|claude-sonnet)          re='^claude-sonnet-' ;;
@@ -256,7 +259,7 @@ PY
 to_text() {
   local src="$1" dest="$2" ext="" tried=() c base
   base="$(basename "$src")"
-  [[ "$base" == *.* ]] && { ext="${base##*.}"; ext="${ext,,}"; }
+  [[ "$base" == *.* ]] && { ext="${base##*.}"; ext="$(lower "$ext")"; }
   case "$ext" in
     md|markdown|txt|text|csv|tsv|json|yaml|yml|html|htm|xml|rst|tex|org)
       cp "$src" "$dest"; return 0 ;;
@@ -374,8 +377,9 @@ if [[ ${#REFS[@]} -gt 0 ]]; then
 fi
 
 # Let agy open the files next to the document and references (e.g. raw data).
+# ${arr[@]+"${arr[@]}"}: bash < 4.4 treats an empty array as unbound under set -u.
 ADD_DIRS=("$ROOT" "$WORK")
-for f in "$DOC" "${REFS[@]}"; do
+for f in "$DOC" ${REFS[@]+"${REFS[@]}"}; do
   [[ -n "$f" ]] || continue
   d="$(dirname "$f")"
   [[ " ${ADD_DIRS[*]} " == *" $d "* ]] || ADD_DIRS+=("$d")
@@ -449,7 +453,7 @@ OUT="$OUT_DIR/$NAME-$TYPE${MODEL:+-$MODEL}-$(date +%Y%m%d-%H%M%S).md"
 ERR="$WORK/agy.err"
 
 ARGS=(--mode plan --sandbox --effort "$EFFORT" --print-timeout "$TIMEOUT")
-for d in "${ADD_DIRS[@]}"; do ARGS+=(--add-dir "$d"); done
+for d in ${ADD_DIRS[@]+"${ADD_DIRS[@]}"}; do ARGS+=(--add-dir "$d"); done
 [[ -n "$MODEL" ]] && ARGS+=(--model "$MODEL")
 
 echo "agy-review: running $TYPE review of $DESC (effort=$EFFORT, timeout=$TIMEOUT${MODEL:+, model=$MODEL}${REFS[0]:+, refs=${#REFS[@]}})..." >&2

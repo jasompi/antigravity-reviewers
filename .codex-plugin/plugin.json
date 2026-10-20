@@ -1,6 +1,6 @@
 {
   "name": "antigravity-reviewers",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Independent second-opinion reviews from Google's Antigravity CLI (agy), using Gemini or any model agy offers (Claude Opus/Sonnet, GPT-OSS). Review code, security, architecture, API/UX design and tests, or documents such as resumes, plans, ideas, reports and presentations together with their context, then triage the feedback and decide together what to change.",
   "author": {
     "name": "Jasom Pi",

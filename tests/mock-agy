@@ -30,7 +30,7 @@ if [[ "${m:-}" =~ -(low|medium|high)$ && -n "${e:-}" && "${BASH_REMATCH[1]}" != 
   echo "error: invalid model selection (--model \"$m\" --effort \"$e\"): --model $m conflicts with --effort=$e" >&2
   exit 1
 fi
-[[ -n "${MOCK_AGY_LOG:-}" ]] && printf '%s\n' "${args[@]}" > "$MOCK_AGY_LOG"
+[[ -n "${MOCK_AGY_LOG:-}" ]] && printf '%s\n' ${args[@]+"${args[@]}"} > "$MOCK_AGY_LOG"
 [[ -n "${MOCK_AGY_PROMPT:-}" ]] && printf '%s' "$prompt" > "$MOCK_AGY_PROMPT"
 if [[ -n "${MOCK_AGY_EXIT:-}" ]]; then
   echo "${MOCK_AGY_STDERR:-mock failure}" >&2

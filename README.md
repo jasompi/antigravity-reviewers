@@ -100,6 +100,8 @@ Using Codex? Do steps 1, 2 and 4 below, then see [Install in Codex](#install-in-
 
 Five steps. Steps 2, 4 and 5 are what let agy run unattended. If you skip them, reviews fail with permission or sandbox errors.
 
+The scripts need bash 3.2 or later, so macOS's stock `/bin/bash` works; Homebrew bash isn't required.
+
 ### 1. Install the Antigravity CLI and sign in
 
 ```bash
@@ -277,7 +279,7 @@ agy-review report --doc q2-report.md --ref sales.csv=source-data --focus "are th
 
 Exit codes: `0` ok, `2` usage error (including an unknown model), `3` nothing to review, `4` a document couldn't be converted to text, `124` timeout, `127` agy not installed. Any other code is agy's own exit code.
 
-Tests run offline against a mock agy: `tests/run-tests.sh`.
+Tests run offline against a mock agy: `tests/run-tests.sh`. They use the bash that runs them, so `/bin/bash tests/run-tests.sh` on a Mac tests bash 3.2. `tests/lint.sh` runs shellcheck and flags bash 4+ features. CI runs both under bash 5, bash 3.2 (the `bash:3.2` container) and macOS's `/bin/bash`.
 
 ## Troubleshooting
 
@@ -308,6 +310,9 @@ prompts/*.md                         # per-type rubrics
 scripts/agy-review.sh                # scope collection, conversion, model aliases, agy invocation
 scripts/install.sh                   # symlink + setup check
 tests/run-tests.sh, tests/mock-agy   # offline tests
+tests/lint.sh                        # shellcheck + bash 3.2 compatibility check
+.github/workflows/test.yml           # CI: bash 5, bash 3.2, macOS /bin/bash
+CHANGELOG.md
 ```
 
 ## Author

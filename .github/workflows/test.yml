@@ -1,0 +1,38 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck --version
+      - run: tests/lint.sh
+
+  bash-5:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: tests/run-tests.sh
+
+  bash-3_2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the tests under bash 3.2
+        run: |
+          docker run --rm -v "$PWD":/src -w /src bash:3.2 sh -c '
+            apk add --no-cache git file coreutils findutils grep sed gawk >/dev/null &&
+            git config --global --add safe.directory /src &&
+            bash tests/lint.sh && bash tests/run-tests.sh'
+
+  # macOS's stock /bin/bash is 3.2.57, the version users without Homebrew bash have.
+  macos-stock-bash:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: /bin/bash --version
+      - run: /bin/bash tests/run-tests.sh
