@@ -79,9 +79,9 @@ expect "  reference block labeled" has "$T/prompt" "<reference label=\"job-descr
 expect "  reference text inlined" has "$T/prompt" "Senior engineer, Go, Kubernetes."
 expect "  focus included" has "$T/prompt" "senior role"
 expect "  document dir added to workspace" has "$T/args" "$T/docs"
-expect "  read-only flags passed" bash -c "grep -qx -- '--sandbox' '$T/args' && grep -qx plan '$T/args'"
+expect "  read-only flags passed" "$BASH" -c "grep -qx -- '--sandbox' '$T/args' && grep -qx plan '$T/args'"
 expect "  reviewer model printed" grep -q '^REVIEWER_MODEL: agy default$' <<<"$OUT"
-expect "  review saved" bash -c "f=\$(sed -n 's/^REVIEW_SAVED: //p' <<<'$OUT'); [[ -s \$f && \$f == *resume-resume-* ]]"
+expect "  review saved" "$BASH" -c "f=\$(sed -n 's/^REVIEW_SAVED: //p' <<<'$OUT'); [[ -s \$f && \$f == *resume-resume-* ]]"
 
 run -- report --doc "$T/docs/resume.md" --ref "$T/docs/data=v2.csv"
 expect_code "a reference path containing '=' still works" 0
@@ -93,7 +93,7 @@ run -- resume --doc "$T/docs/empty.md";             expect_code "empty document 
 run -- report --doc "$T/docs/report.pdf"
 expect_code "pdf converted with pdftotext" 0
 expect "  converted text in the prompt" has "$T/prompt" "PDF TEXT of"
-expect "  nothing written next to the source" bash -c "[[ ! -e '$T/docs/report.txt' ]]"
+expect "  nothing written next to the source" "$BASH" -c "[[ ! -e '$T/docs/report.txt' ]]"
 
 OLDPATH="$PATH"
 # shellcheck disable=SC2123  # a minimal PATH on purpose
@@ -116,7 +116,7 @@ run -- plan --doc "$T/docs/resume.md" --model gpt-oss
 expect "gpt-oss at high falls back to -medium" has "$T/args" "gpt-oss-120b-medium"
 expect "  ...with a note" grep -q "no 'high' variant" <<<"$ERR"
 expect_code "  ...and the run succeeds" 0
-expect "  --effort follows the model suffix" bash -c "grep -A1 -x -- '--effort' '$T/args' | grep -qx medium"
+expect "  --effort follows the model suffix" "$BASH" -c "grep -A1 -x -- '--effort' '$T/args' | grep -qx medium"
 run -- plan --doc "$T/docs/resume.md" --model claude-opus-5-5-low
 expect_code "an exact id with a different default effort still runs" 0
 run -- plan --doc "$T/docs/resume.md" --model gemini --effort medium
@@ -125,12 +125,18 @@ run -- plan --doc "$T/docs/resume.md" --model flash --effort low
 expect "flash picks the newest flash at low" has "$T/args" "gemini-3.8-flash-low"
 run -- plan --doc "$T/docs/resume.md" --model claude-sonnet-5-5
 expect "a base id gets the effort suffix" has "$T/args" "claude-sonnet-5-5-high"
-expect "agy models was called once (cached)" bash -c "[[ \$(wc -l < '$T/models-calls') -eq 1 ]]"
+run -- plan --doc "$T/docs/resume.md" --model Claude-Sonnet-5-5
+expect "a mixed-case base id resolves" has "$T/args" "claude-sonnet-5-5-high"
+run -- plan --doc "$T/docs/resume.md" --model Claude-Opus-5-5-Low
+expect_code "a mixed-case exact id runs" 0
+expect "  as the lowercase id" has "$T/args" "claude-opus-5-5-low"
+expect "  --effort follows its suffix" "$BASH" -c "grep -A1 -x -- '--effort' '$T/args' | grep -qx low"
+expect "agy models was called once (cached)" "$BASH" -c "[[ \$(wc -l < '$T/models-calls') -eq 1 ]]"
 
 rm -f "$T/models-calls"
 run -- plan --doc "$T/docs/resume.md" --model claude-opus-5-5-low
 expect "an exact id passes through" has "$T/args" "claude-opus-5-5-low"
-expect "  without calling agy models" bash -c "[[ ! -e '$T/models-calls' ]]"
+expect "  without calling agy models" "$BASH" -c "[[ ! -e '$T/models-calls' ]]"
 
 touch -t 202001010000 "$T/out/.models-cache"  # stale; POSIX touch, also BSD/macOS
 run MOCK_AGY_MODELS_FAIL=1 -- plan --doc "$T/docs/resume.md" --model sonnet
@@ -165,9 +171,16 @@ expect "--ref works with code reviews" has "$T/prompt" '<reference label="spec"'
 CWD="$T/nogit" run -- code --last-commit;           expect_code "git scopes outside git" 2
 
 # --- every scope, with/without a mixed-case --model alias and a reference ---
-printf 'x = 2\n' > "$T/repo/a.py"; printf 'y = 1\n' > "$T/repo/b.py"
+# main: init; feature: + c.py; then a.py modified (unstaged), b.py staged, u.py untracked.
+git() { command git -C "$T/repo" -c user.name=t -c user.email=t@t "$@"; }
+git branch -q -m main && git checkout -q -b feature
+printf 'z = 1\n' > "$T/repo/c.py" && git add c.py && git commit -qm "add c"
+printf 'x = 2\n' > "$T/repo/a.py"; printf 'y = 1\n' > "$T/repo/b.py"; printf 'u = 1\n' > "$T/repo/u.py"
+git add b.py
+unset -f git
 printf 'Design: add a cache.\n' > "$T/docs/design.md"
-for scope in "--uncommitted" "--last-commit" "--files a.py b.py" "--context-file $T/docs/design.md" "--repo"; do
+for scope in "--uncommitted" "--staged" "--last-commit" "--range HEAD~1..HEAD" "--branch" "--branch main" \
+             "--files a.py b.py" "--context-file $T/docs/design.md" "--repo"; do
   for model in "" "--model Opus"; do
     for ref in "" "--ref $T/docs/jd.md=spec"; do
       name="code $scope${model:+ $model}${ref:+ --ref}"
@@ -178,22 +191,29 @@ for scope in "--uncommitted" "--last-commit" "--files a.py b.py" "--context-file
       if [[ -n "$model" ]]; then
         expect "  Opus resolves to claude-opus-5-5-high" has "$T/args" "claude-opus-5-5-high"
       else
-        expect "  no --model passed" bash -c "[[ -s '$T/args' ]] && ! grep -qx -- '--model' '$T/args'"
+        expect "  no --model passed" "$BASH" -c "[[ -s '$T/args' ]] && ! grep -qx -- '--model' '$T/args'"
       fi
       if [[ -n "$ref" ]]; then
         expect "  reference included" has "$T/prompt" '<reference label="spec"'
         expect "  reference dir added to workspace" has "$T/args" "$T/docs"
       else
-        expect "  no reference section" bash -c "[[ -s '$T/prompt' ]] && ! grep -q '## Reference material' '$T/prompt'"
+        expect "  no reference section" "$BASH" -c "[[ -s '$T/prompt' ]] && ! grep -q '## Reference material' '$T/prompt'"
       fi
     done
   done
 done
 CWD="$T/repo" run -- code --files a.py b.py
-expect "--files lists both paths" bash -c "grep -qF -- '- $T/repo/a.py' '$T/prompt' && grep -qF -- '- $T/repo/b.py' '$T/prompt'"
+expect "--files lists both paths" "$BASH" -c "grep -qF -- '- $T/repo/a.py' '$T/prompt' && grep -qF -- '- $T/repo/b.py' '$T/prompt'"
 CWD="$T/repo" run -- code --uncommitted
 expect "--uncommitted includes the diff" has "$T/prompt" "+x = 2"
-expect "  and untracked files" has "$T/prompt" "b.py"
+expect "  and untracked files" has "$T/prompt" "u.py"
+CWD="$T/repo" run -- code --staged
+expect "--staged includes only staged changes" "$BASH" -c "grep -qF -- '+y = 1' '$T/prompt' && ! grep -qF -- '+x = 2' '$T/prompt'"
+CWD="$T/repo" run -- code --range HEAD~1..HEAD
+expect "--range includes the commit" has "$T/prompt" "+z = 1"
+CWD="$T/repo" run -- code --branch
+expect "--branch detects main as the base" has "$T/prompt" "branch feature vs main"
+expect "  and includes the branch's commit" has "$T/prompt" "+z = 1"
 
 # --- uppercase extensions ---
 printf 'fake pdf bytes\n' > "$T/docs/SCAN.PDF"

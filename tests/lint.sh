@@ -17,7 +17,7 @@ fi
 
 # Bash 4+ only. Each check is "name<TAB>extended regex"; comment lines are skipped.
 CHECKS=(
-  'case modification ${x,,} ${x^^}	\$\{[A-Za-z_][A-Za-z0-9_]*(\[[^]]*\])?(,,?|\^\^?)\}'
+  'case modification ${x,,} ${x^^pat}	\$\{[A-Za-z_][A-Za-z0-9_]*(\[[^]]*\])?(,,?|\^\^?)[^}]*\}'
   'transformation ${x@Q}	\$\{[^}]*@[QEPAaKkUuL]\}'
   'associative array or nameref	(declare|local|typeset) +-[a-zA-Z]*[An]'
   'mapfile or readarray	(^|[^A-Za-z0-9_-])(mapfile|readarray)([^A-Za-z0-9_-]|$)'

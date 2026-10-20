@@ -193,7 +193,8 @@ pick_model() {
 
 resolve_model() {
   local re="" alias=1 picked
-  case "$(lower "$MODEL")" in
+  MODEL="$(lower "$MODEL")"  # agy's model ids are lowercase
+  case "$MODEL" in
     "") return 0 ;;
     opus|claude|claude-opus)       re='^claude-opus-' ;;
     sonnet|claude-sonnet)          re='^claude-sonnet-' ;;
